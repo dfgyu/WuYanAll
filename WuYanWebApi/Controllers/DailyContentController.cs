@@ -1,19 +1,24 @@
-﻿using Microsoft.EntityFrameworkCore;
-using WuYanWebApi.Models;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using static System.Net.Mime.MediaTypeNames;
+using WuYanWebApi.Models;
+using WuYanWebApi.Services;
 using Image = WuYanWebApi.Models.Image;
 
 
 namespace WuYanWebApi.Controllers
 {
+
+
     [ApiController]
     [Route("api/[controller]")]
     public class DailyContentController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IFavoriteService _favoriteService;
+        private readonly ICommentService _commentService;
+
 
         public DailyContentController(AppDbContext context)
         {
@@ -24,25 +29,67 @@ namespace WuYanWebApi.Controllers
         [HttpGet("today")]
         public async Task<IActionResult> GetTodayContent()
         {
-            var today = DateTime.Today;
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
 
             var article = await _context.Articles
-                .Where(a => a.PublishDate.Date == today)
+                .Where(a => a.PublishDate >= today && a.PublishDate < tomorrow)
                 .FirstOrDefaultAsync();
 
             var image = await _context.Images
-                .Where(i => i.Date.Date == today)
+                .Where(i => i.Date >= today && i.Date < tomorrow)
                 .FirstOrDefaultAsync();
 
             var question = await _context.Questions
-                .Where(q => q.Date.Date == today)
+                .Where(q => q.Date >= today && q.Date < tomorrow)
                 .FirstOrDefaultAsync();
+
+            // 获取收藏和评论信息
+            int? userId = null;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            }
 
             return Ok(new
             {
-                Article = article,
-                Image = image,
-                Question = question
+                Article = article != null ? new
+                {
+                    article.Id,
+                    article.Title,
+                    article.Auther,
+                    article.Content,
+                    article.PublishDate,
+                    FavoriteCount = await _favoriteService.GetFavoriteCount("Article", article.Id),
+                    CommentCount = await _commentService.GetCommentCount("Article", article.Id),
+                    IsFavorite = userId.HasValue ?
+                        await _favoriteService.IsFavorite(userId.Value, "Article", article.Id) : false
+                } : null,
+
+                Image = image != null ? new
+                {
+                    image.Id,
+                    image.Title,
+                    image.Description,
+                    image.Url,
+                    image.Date,
+                    FavoriteCount = await _favoriteService.GetFavoriteCount("Image", image.Id),
+                    CommentCount = await _commentService.GetCommentCount("Image", image.Id),
+                    IsFavorite = userId.HasValue ?
+                        await _favoriteService.IsFavorite(userId.Value, "Image", image.Id) : false
+                } : null,
+
+                Question = question != null ? new
+                {
+                    question.Id,
+                    question.QuestionText,
+                    question.Answer,
+                    question.Date,
+                    FavoriteCount = await _favoriteService.GetFavoriteCount("Question", question.Id),
+                    CommentCount = await _commentService.GetCommentCount("Question", question.Id),
+                    IsFavorite = userId.HasValue ?
+                        await _favoriteService.IsFavorite(userId.Value, "Question", question.Id) : false
+                } : null
             });
         }
         // 添加文章 - 修正版
@@ -55,7 +102,7 @@ namespace WuYanWebApi.Controllers
 
             article.PublishDate = DateTime.Now;
             // 可以添加用户ID到文章，如果需要在内容中记录作者
-             //article.AuthorId = userId;
+            //article.AuthorId = userId;
 
             _context.Articles.Add(article);
             await _context.SaveChangesAsync();

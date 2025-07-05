@@ -12,6 +12,7 @@ namespace WuYanWebApi.Services
         Task<IEnumerable<Comment>> GetComments(string contentType, int contentId);
         Task<IEnumerable<Comment>> GetUserComments(int userId);
         Task<Comment?> GetCommentById(int commentId);
+        Task<int> GetCommentCount(string contenType, int contentId);
     }
     public class CommentService : ICommentService
     {
@@ -86,6 +87,14 @@ namespace WuYanWebApi.Services
         {
             return await _context.Comments
                 .FirstOrDefaultAsync(c => c.Id == commentId);
+        }
+
+        public async Task<int> GetCommentCount(string contentType, int contentId)
+        {
+            return await _context.Favorites
+                .CountAsync(f =>
+                    f.ContentType == contentType &&
+                    f.ContentId == contentId);
         }
     }
 }

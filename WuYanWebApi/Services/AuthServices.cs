@@ -1,15 +1,17 @@
-﻿using System.Security.Claims;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using WuYanWebApi.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 
 
 namespace WuYanWebApi.Services
 {
-    public interface IAuthService {
+    //有关于用户认证和授权的服务接口
+    public interface IAuthService
+    {
         Task<UserResponse> Register(RegisterRequest model);
         Task<string> Login(LoginRequest model);
         Task<UserResponse> GetUserById(int id);
@@ -17,6 +19,7 @@ namespace WuYanWebApi.Services
         Task<bool> CheckEmailExists(string email);
 
     }
+    //有关于用户认证和授权的服务实现
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _context;
@@ -44,7 +47,8 @@ namespace WuYanWebApi.Services
                 Email = model.Email,
                 PasswordHash = HashPassword(model.Password),
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                // Password = model.Password, // 这里是为了满足 User 类的要求，实际存储的是 PasswordHash
             };
 
             _context.Users.Add(user);

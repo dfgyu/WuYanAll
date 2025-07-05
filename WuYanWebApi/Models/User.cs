@@ -34,7 +34,8 @@ namespace WuYanWebApi.Models
     }
 
 
-    public class RegisterRequest {
+    public class RegisterRequest
+    {
         [Required]
         [StringLength(50, MinimumLength = 3)]
         public string Username { get; set; } = string.Empty;
@@ -47,14 +48,16 @@ namespace WuYanWebApi.Models
         [StringLength(100, MinimumLength = 6)]
         public string Password { get; set; } = string.Empty;
     }
-    public class LoginRequest {
+    public class LoginRequest
+    {
         [Required]
         public string UsernameOrEmail { get; set; } = string.Empty;
 
         [Required]
         public string Password { get; set; } = string.Empty;
     }
-    public class UserResponse {
+    public class UserResponse
+    {
         public int Id { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
@@ -62,5 +65,15 @@ namespace WuYanWebApi.Models
         public string? AvatarUrl { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+
+        public void Update(UserResponse model)
+        {
+            Username = model.Username;
+            Email = model.Email;
+            Bio = model.Bio;
+            AvatarUrl = model.AvatarUrl;
+            UpdatedAt = DateTime.UtcNow;
+        }
     }
 }

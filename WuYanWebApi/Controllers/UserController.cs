@@ -1,8 +1,8 @@
-﻿using WuYanWebApi.Services;
-using WuYanWebApi.Models;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using WuYanWebApi.Models;
+using WuYanWebApi.Services;
 
 
 namespace WuYanWebApi.Controllers
@@ -13,6 +13,9 @@ namespace WuYanWebApi.Controllers
     public class UserController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly AppDbContext _context;
+        private readonly IFileService _fileService;
+        private readonly ILogger<UserController> _logger;
 
         public UserController(IAuthService authService)
         {
@@ -35,19 +38,81 @@ namespace WuYanWebApi.Controllers
         }
 
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UserResponse model)
+        public async Task<IActionResult> UpdateProfile([FromForm] UserProfileUpdate model)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            // 在实际应用中，这里应该有更新用户信息的逻辑
-            // 为简化示例，我们直接返回当前用户信息
             try
             {
-                var user = await _authService.GetUserById(userId);
-                return Ok(user);
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return NotFound();
+
+                // 更新用户信息
+                if (!string.IsNullOrWhiteSpace(model.Bio))
+                    user.Bio = model.Bio;
+
+                // 处理头像上传
+                if (model.Avatar != null && model.Avatar.Length > 0)
+                {
+                    // 删除旧头像（如果有）
+                    if (!string.IsNullOrEmpty(user.AvatarUrl))
+                        _fileService.DeleteFile(user.AvatarUrl);
+
+                    // 保存新头像
+                    user.AvatarUrl = await _fileService.SaveImageAsync(
+                        model.Avatar, "avatars");
+                }
+
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return Ok(new UserResponse
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    Bio = user.Bio,
+                    AvatarUrl = user.AvatarUrl,
+                    CreatedAt = user.CreatedAt,
+                    UpdatedAt = user.UpdatedAt
+                });
             }
             catch (Exception ex)
             {
-                return NotFound(new { message = ex.Message });
+                _logger.LogError(ex, "更新失败");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+
+        [Authorize]
+        [HttpPost("avatar")]
+        public async Task<IActionResult> UpdateAvatar(IFormFile avatar)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return NotFound();
+
+                if (avatar == null || avatar.Length == 0)
+                    return BadRequest("无文件");
+
+                // 删除旧头像（如果有）
+                if (!string.IsNullOrEmpty(user.AvatarUrl))
+                    _fileService.DeleteFile(user.AvatarUrl);
+
+                // 保存新头像
+                user.AvatarUrl = await _fileService.SaveImageAsync(avatar, "avatars");
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { avatarUrl = user.AvatarUrl });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "更新头像失败");
+                return StatusCode(500, new { message = "Internal server error" });
             }
         }
     }

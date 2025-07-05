@@ -25,8 +25,8 @@ namespace WuYanApps
                 });
 
 #if DEBUG
-    		builder.Logging.AddDebug();
-    		builder.Services.AddLogging(configure => configure.AddDebug());
+            builder.Logging.AddDebug();
+            builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
             builder.Services.AddSingleton<ProjectRepository>();

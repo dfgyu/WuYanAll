@@ -1,7 +1,4 @@
-﻿using WuYanApps.Models;
-using WuYanApps.PageModels;
-
-namespace WuYanApps.Pages
+﻿namespace WuYanApps.Pages
 {
     public partial class MainPage : ContentPage
     {

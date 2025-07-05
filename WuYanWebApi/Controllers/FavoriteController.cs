@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using WuYanWebApi.Models;
-using WuYanWebApi.Services;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using WuYanWebApi.Services;
 
 namespace WuYanWebApi.Controllers
 {
